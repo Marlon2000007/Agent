@@ -2,4 +2,4 @@ google-cloud-bigquery
 streamlit
 python-dotenv
 openai
-agents
+dataclasses-json
