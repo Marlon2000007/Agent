@@ -1,5 +1,4 @@
-google-cloud-bigquery
 streamlit
-python-dotenv
+google-cloud-bigquery
 openai
-dataclasses-json
+openai-agents

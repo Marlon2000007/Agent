@@ -7,12 +7,16 @@ from typing import List
 from openai import OpenAI
 import asyncio
 import tempfile
+import json
 
 # ----------------------------
 # Setup
 # ----------------------------
+gcp_credentials = dict(st.secrets["gcp_service_account"])
+
+# Write them to a temporary file
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
-    f.write(json.dumps(st.secrets["gcp_service_account"]).encode("utf-8"))
+    f.write(json.dumps(gcp_credentials).encode("utf-8"))
     f.flush()
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
 
@@ -138,4 +142,3 @@ if run_btn:
     except Exception as e:
         st.error(f"Error running agent: {e}")
 # ...existing code...
-
