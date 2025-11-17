@@ -42,7 +42,7 @@ def get_high_basket_value_orders(amount: int):
     FROM `greensupplyproject.retail_data.Fact_Sales` AS sales_fact
     INNER JOIN `greensupplyproject.retail_data.Dim_Product` AS product_dim 
         ON sales_fact.product_sk = product_dim.product_sk
-    WHERE (sales_fact.quantity * product_dim.purchase_price) > {amount}
+    WHERE (sales_fact.quantity * product_dim.purchase_price) BETWEEN {amount - 50} AND {amount + 50}
     ORDER BY basket_value DESC
     LIMIT 5
     """
@@ -136,10 +136,10 @@ RULES
 # ----------------------------
 st.title("Agent Basket Report")
 
-st.markdown("Provide the agent an basket value threshold maximum 400")
+st.markdown("Provide the agent an basket value threshold maximum 450")
 treshold = st.number_input(
     "Threshold Amount",
-    max_value=400,
+    max_value=450,
     value=300,
     step=50
 )
