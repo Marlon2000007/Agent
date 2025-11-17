@@ -26,10 +26,6 @@ os.environ["OPENAI_API_KEY"] = openai_api_key
 bq_client = bigquery.Client()
 llm_client = OpenAI(api_key=openai_api_key)
 
-# ----------------------------
-# Optimized BigQuery Functions
-# ----------------------------
-
 @function_tool
 def get_high_basket_value_orders(amount: int):
     """
@@ -48,7 +44,7 @@ def get_high_basket_value_orders(amount: int):
         ON sales_fact.product_sk = product_dim.product_sk
     WHERE (sales_fact.quantity * product_dim.purchase_price) > {amount}
     ORDER BY basket_value DESC
-    LIMIT 50
+    LIMIT 5
     """
     df = bq_client.query(query).to_dataframe()
     return df.to_dict(orient="records")
@@ -80,32 +76,55 @@ class AgentBasket:
     basket_value: float
     issues: List[str]
 
-
 shopping_cart_anomaly_agent = Agent(
     name="ShoppingCartAnomalyAgent",
     instructions="""
-    You are a data analysis agent that identifies unusually high basket values in retail transactions.
+    You are a retail basket-value anomaly detection agent.
 
-    ### RULES ###
-    1. Call get_high_basket_value_orders(amount) as the first step using the numeric threshold the user provides.
-    2. Extract all unique customer_sks from the results and call get_customer_names_in_batch once.
-    3. For each order:
-       - Find the company_name from the batch result (use 'UNKNOWN' if missing).
-       - Create one JSON object with:
-           "order_id", "company_name", and "issues" (a short explanation).
-    4. Output a JSON array exactly matching:
-       [
-         {
-           "order_id": "<string>",
-           "company_name": "<string>",
-           "basket_value": <float>,
-           "issues": ["<short explanation>"]
-         }
-       ]
-    5. Keep explanations short, like:
-       "Basket value $1,250 exceeds threshold; high quantity * high price."
-    6. If no high-value orders exist, return [].
-    7. Return only the JSON (no extra text).
+Follow this workflow EXACTLY:
+Wait for the tool result. Do NOT call any other tools yet.
+────────────────────────────────────────────
+Get High-Value Orders
+────────────────────────────────────────────
+call:
+{
+  "tool": "get_high_basket_value_orders",
+  "amount": <threshold>
+}
+Wait for the tool response.
+
+Fetch Customer Names
+────────────────────────────────────────────
+Extract the unique customer_sks from the order list, then call:
+
+{
+  "tool": "get_customer_names_in_batch",
+  "customer_sks": ["123", "456"]
+}
+Wait for the tool response.
+
+Produce Final JSON Output
+────────────────────────────────────────────
+Combine order data then output a JSON array for each order exceeding the threshold with the following fields:
+
+Example final message:
+[
+  {
+    "order_id": "123",
+    "company_name": "Acme Corp",
+    "basket_value": 400.5,
+    "issues": ["High basket value"]
+  }
+]
+If no orders exceed the threshold, return [].
+────────────────────────────────────────────
+RULES
+────────────────────────────────────────────
+• NEVER repeat a tool call unless new data requires it.
+• Output only valid JSON at the final step.
+• No conversation, no commentary, no text outside JSON.
+•After get_high_basket_value_orders returns, you MUST output the final JSON array and STOP. 
+•Do NOT output thoughts or explanation.
     """,
     tools=[get_high_basket_value_orders, get_customer_names_in_batch],
     output_type=List[AgentBasket],
@@ -117,8 +136,15 @@ shopping_cart_anomaly_agent = Agent(
 # ----------------------------
 st.title("Agent Basket Report")
 
-st.markdown("Provide the agent an basket value threshold")
-user_content = st.text_input("Agent input", value="detect unusual basket values greater than 450.")
+st.markdown("Provide the agent an basket value threshold maximum 400")
+treshold = st.number_input(
+    "Threshold Amount",
+    max_value=400,
+    value=300,
+    step=50
+)
+
+user_content = st.text_input("Agent input", value=f"detect unusual basket values greater than {treshold}.")
 run_btn = st.button("Run Detection")
 
 if run_btn:
@@ -141,4 +167,3 @@ if run_btn:
                 st.write(output)
     except Exception as e:
         st.error(f"Error running agent: {e}")
-# ...existing code...

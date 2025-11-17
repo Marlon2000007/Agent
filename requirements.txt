@@ -1,4 +1,5 @@
 streamlit
-google-cloud-bigquery
+google-cloud-bigquery-storage
 openai
 openai-agents
+db-dtypes
